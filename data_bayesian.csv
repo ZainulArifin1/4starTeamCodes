@@ -1,0 +1,63 @@
+curses_per_day,age,gender,n_siblings,continent,highest_degree
+75,21,Male,2,Asia,Bachelor
+145,23,Male,2,Europe,Master
+36,27,Male,1,Europe,No degree
+3,25,Female,0,Asia,Master
+4,23,Female,0,Europe,Bachelor
+15,35,Male,2,Europe,Bachelor
+0,26,Male,2,Europe,Master
+30,29,Male,1,America,Master
+20,22,Female,2,Asia,Bachelor
+5,29,Female,1,Europe,Master
+4,23,Female,1,Asia,Bachelor
+10,26,Female,0,Europe,
+30,16,Female,1,Asia,No degree
+20,23,Female,1,Europe,Master
+50,24,Male,3,Asia,Bachelor
+5,23,Male,1,Asia,Bachelor
+5,21,Female,1,Asia,Bachelor
+5,23,Female,1,Asia,Bachelor
+3,29,Female,1,Europe,Master
+5,21,Female,3,Asia,Bachelor
+20,22,Male,3,Europe,Bachelor
+10,36,Female,2,Europe,Master
+5,18,Male,1,Asia,No degree
+1,63,Female,5,Europe,Bachelor
+20,21,Female,1,Asia,No degree
+20,21,Female,2,Asia,No degree
+20,25,Male,6,Europe,Master
+0,24,Female,2,Europe,Bachelor
+10,23,Male,2,Europe,Master
+10,21,Male,4,Europe,Bachelor
+10,25,Female,3,Europe,Bachelor
+75,23,Female,3,Asia,Master
+0,22,Female,1,Asia,Master
+40,29,Male,1,Europe,Master
+15,27,Female,0,Europe,Master
+1,20,Female,4,Asia,Bachelor
+21,29,Male,1,Europe,No degree
+0,29,Male,1,Europe,No degree
+1,66,Male,0,Europe,No degree
+10,16,Female,0,Asia,No degree
+3,23,Female,2,Asia,Bachelor
+1,23,Male,2,Asia,Bachelor
+3,23,Female,1,Asia,Bachelor
+2,21,Male,1,Asia,Bachelor
+30,21,Male,4,Europe,Master
+5,22,Female,1,Europe,Master
+6,26,Female,1,Europe,Master
+300,27,Male,1,Europe,Master
+0,27,Female,2,America,PhD
+20,28,Female,1,Europe,Master
+3,27,Male,1,America,Master
+2,27,Male,2,Asia,Master
+50,25,Female,0,Asia,Master
+0,26,Female,2,Europe,Master
+0,30,Male,2,Europe,Master
+20,29,Male,1,Europe,Master
+15,29,Male,0,Europe,Master
+10,29,Female,0,Europe,Master
+100,31,Male,2,Europe,Bachelor
+50,100,Male,4,Europe,Master
+134,28,Male,1,Europe,Master
+15,29,Male,2,America,PhD

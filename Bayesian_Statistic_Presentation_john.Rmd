@@ -1,0 +1,333 @@
+---
+title: "Bayesian Statistics Presentation"
+author: "Jacopo, John Grady, Unmani, and Zain"
+date: "10/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This markdown is for data collected for the CRT Bayesian Statistics component of the CRT in Genomics Data Science. We are attempting to determine how many swear words do people say in a day and the possible dependent variables effecting this
+
+
+```{r Packages, output = FALSE}
+
+# Install the librarys required
+library(tidyverse)
+library(ggplot2)
+library(LearnBayes)
+library(rjags)
+library(cowplot)
+```
+
+### Open the data
+
+It is important to clean the data before analysis
+
+```{r pressure,}
+data <- read.csv("data_bayesian.csv")
+colnames(data) <- c("Words", "Age", "Gender", "Siblings", "Location", "Degree")
+
+data <- data %>% filter(data$Age < 98, data$Words < 299)
+data$Gender[data$Gender == "Dad"] <- "Male"
+data$Degree[data$Degree == "PhD"] <- "Master"
+
+#table(data$Gender)
+table(data$Degree)
+table(data$Siblings)
+
+```
+
+### Visualise the data
+
+```{r}
+p1 <- ggplot(data = data, aes(Gender, Words, colour = Gender)) +
+  geom_boxplot(varwidth = TRUE)
+p2 <- ggplot(data = data, aes(Location, Words, colour = Location)) +
+  geom_boxplot(varwidth = TRUE)
+p3 <- ggplot(data = data, aes(Degree, Words, colour = Degree)) +
+  geom_point()
+
+plot_grid(p1, p2, p3, labels = c("Gender & Words",
+                             "Location & Words",
+                             "Degree & Words"), label_size = 10,
+          label_x = 1, label_y = 1,
+  hjust = 0.95, vjust = 3.)
+```
+
+
+For our regression analysis on number of swear words, we will keep the independent variables (Siblings, Sex and Degree)
+
+### Prior Information
+
+Research online shows that people say on average 80-90 swear words / day. We will use this as our prior. Our data follows a poisson distribution as the values are >= 0. Hence, we will use a gamma prior as when we multiply the prior (gamma) by the data (i.e. liklihood which is a poisson) we will return a posterior gamma distribution due to conjugacy.
+
+```{r Prior Information}
+# Based on data above
+m0 <- 85
+sd0 <- 15
+
+# We are defining our paramaters for our prior gamma distribution
+alpha <- (m0 ^2/ sd0^2)
+beta <- (m0 / sd0^2)
+
+alpha
+beta
+```
+
+```{r Plotting Prior}
+x <- seq(0, 120, length=1000)
+priorx <- dgamma(x, shape=alpha, rate=beta)
+plot(x, priorx, type='l',lwd=3,xlim = c(0,120), 
+     ylim=c(0,0.1), 
+     col = 'blue', main = '', 
+     xlab = 'theta', ylab = '')
+
+
+
+```
+```{r Updating Prior with data}
+df <- data.frame(Distribution = c("Prior","Data","Posterior"),
+    Shape = c(alpha,sum(data$Words),alpha+sum(data$Words)),
+  Rate = c(beta,length(data$Words), beta+length(data$Words)))
+
+df
+
+```
+```{r Plotting Prior and Posterior}
+
+postx <- dgamma(x, shape=df[3,2], rate=df[3,3])
+plot(x, priorx, type='l',lwd=3,xlim = c(0,150), ylim=c(0,0.75), col = 'blue', main = '', xlab = 'theta')
+lines(x, postx,col='red',lwd=3)
+legend("topright", c("Prior","Posterior"), lty = 1, lwd= 3, col = c('blue','red'))
+
+
+```
+```{r}
+plot(x, postx, type = 'l', ylim = c(0,0.7), xlim = c(0,30), lwd=3,col = 'red', main = 'Posterior'
+, xlab = 'theta')
+abline(v=qgamma(0.025,shape=alpha+sum(data$Words),rate=beta+length(data$Words)),lty='dashed',lwd=2)
+abline(v=qgamma(0.975,shape=alpha+sum(data$Words),rate=beta+length(data$Words)),lty='dashed',lwd=2)
+
+
+```
+
+
+### MCMC model
+
+```{r MCMC model}
+# Step 1 - Define the model
+# Note important syntax --> need to know the distribution of likelihood
+# Can guess distribution of prior but paramaters (here theta) must be the same
+data_model <- "model{
+  # likelihood
+  
+  for(i in 1:length(X)) {
+  X[i] ~ dpois(theta) # random variable
+  }
+  
+  # Prior beliefs for theta above
+  theta ~ dnorm(85, 15^(-2)) # Our prior belief
+}
+"
+# could use dunif to have it as a random uninformative prior
+
+```
+
+```{r}
+# Step 2 
+# Compile the model
+# Requires the model developed above, a list of data(with paramater) and a random number of values
+data_jags <- jags.model(textConnection(data_model), 
+                           data = list(X = data$Words),
+                           inits = list(.RNG.name = "base::Wichmann-Hill", .RNG.seed = 1090))
+```
+```{r}
+# Burn it in
+data_sim <- update(data_jags, n.iter = 10000)
+
+
+# Simulation now after the burn in
+data_sim <- coda.samples(model = data_jags,
+                             variable.names = c("theta"),
+                             n.iter = 20000)
+```
+
+```{r}
+# Plot our results
+plot(data_sim)
+summary(data_sim)
+
+```
+
+
+Check for auto correlation
+
+
+```{r}
+# Looking 
+autocorr.plot(data_sim)
+head(data_sim)
+```
+
+
+```{r 95% Confidence interval}
+# Store as data frame
+data_chains <- data.frame(sim = 1:20000, data_sim[[1]])
+
+ci95 <- quantile(data_chains$theta, probs = c(0.025, 0.975))
+
+ggplot(data_chains, aes(x=theta)) + geom_density() +
+  geom_vline(xintercept = ci95, col = 'red', lty = 'dashed')
+
+
+```
+
+
+
+
+### Bayesian Regression
+```{r}
+
+data$GenderBinary[data$Gender == "Male"] <- 1
+data$GenderBinary[data$Gender == "Female"] <- 2
+
+# Compile the model
+
+swear_model_sex <- "model{
+    # Define model for data Y[i], setup b[X[i]]]
+    for(i in 1:length(Y)) {
+    m[i] <- a + b[X[i]]
+    Y[i] ~ dnorm(m[i], s^(-2))
+    }
+
+    # Define the a, b, s priors
+    a ~ dunif(0, 50) # uninformativ
+    b[1] <- 0
+    b[2] ~ dnorm(0,50**(-2))
+    s ~ dunif(0, 20) # uninformative
+}
+"
+
+```
+
+
+
+```{r}
+# Compile the model
+swear_jags_sex <- jags.model(textConnection(swear_model_sex), 
+                             data = list(Y = data$Words, X = data$GenderBinary),
+                             inits = list(.RNG.name="base::Wichmann-Hill",.RNG.seed = 69))
+
+```
+```{r}
+## Burn in
+swear_sim_sex <- update(swear_jags_sex, n.iter = 100000, n.thin = 10)
+## Update
+swear_sim_sex <- coda.samples(model=swear_jags_sex,
+                              variable.names=c("a","b","s"),
+                              n.iter=20000,
+                              n.thin=10
+                              )
+```
+
+```{r}
+plot(swear_sim_sex, trace = FALSE)[[1]]
+#plot(swear_sim_sex)
+autocorr.plot(swear_sim_sex)
+```
+
+
+
+```{r}
+summary(swear_sim_sex)[1]
+```
+
+```{r}
+words_sex <- data.frame(swear_sim_sex[[1]])
+words_sex <- words_sex %>% mutate(
+  Male = a,
+  Female = a+b.2.,
+  `Overall Posterior` = data_chains$theta
+  )
+
+words_sex_longer <-
+  words_sex %>% 
+  pivot_longer(
+    cols = Male:`Overall Posterior`,
+    names_to = c("Sex"),
+    values_to = "Curses/day"
+    )
+
+ggplot(data = words_sex_longer) +
+  geom_density(aes(x = `Curses/day`, fill = Sex), alpha = 0.86)
+
+```
+
+
+```{r continent}
+swear_model_continent <- "model{
+    # Define model for data Y[i], setup b[X[i]]]
+    for(i in 1:length(Y)) {
+    m[i] <- a + b[X[i]]
+    Y[i] ~ dnorm(m[i], s^(-2))
+    }
+
+    # Define the a, b, s priors
+    a ~ dunif(0, 50) # uninformativ
+    b[1] <- 0
+    b[2] ~ dnorm(0,50**(-2))
+    b[3] ~ dnorm(0, 50**(-2))
+    s ~ dunif(0, 20) # uninformative
+}
+"
+
+# Compile the model
+
+data$LocBinary[data$Location == "Europe"] <- 1
+data$LocBinary[data$Location == "Asia"] <- 2
+data$LocBinary[data$Location == "America"] <- 3
+
+swear_jags_continent <- jags.model(textConnection(swear_model_continent), 
+                             data = list(Y = data$Words, X = data$LocBinary),
+                             inits = list(.RNG.name="base::Wichmann-Hill",.RNG.seed = 69))
+```
+```{r}
+# BURN IN the model
+swear_sim_continent <- update(swear_jags_continent, n.iter = 10000)
+# SIMULATE the posterior    
+swear_sim_continent <- coda.samples(model=swear_jags_continent,
+                               variable.names=c("a","b","s"),
+                               n.iter=20000)
+```
+
+```{r}
+plot(swear_sim_continent)
+autocorr.plot(swear_sim_continent)
+```
+```{r}
+words_continent <- data.frame(swear_sim_continent[[1]])
+words_continent <- words_continent %>% mutate(
+  Europe = a+`b.1.`,
+  Asia = a+`b.2.`,
+  America = a+`b.3.`,
+  `Overall Posterior` = data_chains$theta
+  )
+words_continent_longer <-
+  words_continent %>% 
+  pivot_longer(
+    cols = Europe:`Overall Posterior` ,
+    names_to = c("Continent"),
+    values_to = "Curses/day"
+    )
+
+
+ggplot(data = words_continent_longer) +
+  geom_density(aes(x = `Curses/day`, fill = Continent), alpha = 0.86)
+  
+```
+
